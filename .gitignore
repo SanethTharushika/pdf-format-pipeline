@@ -1,2 +1,4 @@
 samples/*.pdf
+samples/*.jpg
+samples/*.png
 .env
