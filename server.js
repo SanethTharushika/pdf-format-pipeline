@@ -8,6 +8,7 @@ import { renderPagesToImages } from "./core/pdfImages.js";
 
 const app = express();
 app.use(cors());
+app.set("json spaces", 2); // readable JSON, one item per line
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -56,14 +57,21 @@ app.post("/api/extract", upload.single("file"), async (req, res) => {
       return res.status(422).json({ error: "No readable text found in this file" });
     }
 
-    const { fields, missing } = processLines(lines);
+    const { fields, missing, pairs } = processLines(lines);
     const response = { success: true, method, data: fields, missing };
-    if (req.query.debug) response.lines = lines;
+
+    if (req.query.debug) {
+      response.pairs = pairs; // every label:value found (stage 1)
+      response.lines = lines; // raw lines
+    }
 
     res.json(response);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Could not process this file" });
+    res.status(500).json({
+      error: "Could not process this file",
+      detail: req.query.debug ? String(err.stack || err) : undefined,
+    });
   }
 });
 
