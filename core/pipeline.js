@@ -1,7 +1,7 @@
-// ───────────── YOUR STANDARD FORMAT ─────────────
 // field -> labels other documents might use. Add new aliases here.
 export const FIELDS = {
-  patient: ["patient name", "name"],
+  patient: ["patient name", "patient", "name"],
+  doctor: ["doctor name", "doctor", "prescriber", "physician", "dr."],
   date: ["date"],
   address: ["address"],
   quantity: ["tabs no.", "tabs no", "quantity", "qty", "disp"],
@@ -25,7 +25,7 @@ const EXTRA_LABELS = [
 // Fields with NO label, found by pattern in the unlabeled text
 const PATTERNS = {
   drug: /[A-Za-z][A-Za-z\-]+\s+\d+(?:\.\d+)?\s?(?:mg|mcg|g|ml|iu)\b/i,
-  doctor: /[A-Z][A-Za-z.\s]*?,\s*M\.?D\.?/,
+  doctor: /(?:\bDr\.?\s+[A-Z][A-Za-z.\-]*(?:\s+[A-Z][A-Za-z.\-]*){0,3})|(?:[A-Z][A-Za-z.\-]*(?:\s+[A-Z][A-Za-z.\-]*){0,3},?\s*(?:M\.?D\.?|MBBS|D\.?O\.?))/,
 };
 
 // After mapping, tidy each field into your standard format
@@ -35,7 +35,7 @@ const NORMALIZERS = {
   date: (v) => v.replace(/[^A-Za-z0-9,\/\-\s.]/g, "").trim(),
 };
 
-// ───────────── CLEANING ─────────────
+
 // Remove OCR noise from one line
 function cleanLine(line) {
   return line
@@ -69,7 +69,7 @@ function findLabels(line, labels) {
   return hits.sort((a, b) => a.start - b.start);
 }
 
-// ───────────── STAGE 1: break everything into pairs ─────────────
+
 // Returns a flat list like:
 // [{ key: "name", value: "Mary Smith" }, { key: null, value: "Lipitor 10 mg" }, ...]
 export function extractPairs(rawLines) {
@@ -102,7 +102,7 @@ export function extractPairs(rawLines) {
   return pairs;
 }
 
-// ───────────── STAGE 2: map pairs into YOUR format ─────────────
+
 export function mapToFormat(pairs, fields = FIELDS) {
   const result = {};
 
@@ -115,6 +115,7 @@ export function mapToFormat(pairs, fields = FIELDS) {
   // unlabeled fields: search the text that has no label
   const unlabeled = pairs.filter((p) => !p.key).map((p) => p.value);
   for (const [field, re] of Object.entries(PATTERNS)) {
+    if (result[field]) continue; // already found by label, keep it
     result[field] = "";
     for (const text of unlabeled) {
       const m = text.match(re);
